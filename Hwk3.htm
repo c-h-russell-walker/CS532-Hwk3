@@ -1,5 +1,8 @@
 ﻿
 <!DOCTYPE html>
+<!-- Chris Russell-Walker
+    BU MET CS532 Comp Graphics
+    Hwk3
 <!--
 /*
  * Copyright (C) 2009 Apple Inc. All Rights Reserved.
@@ -154,19 +157,18 @@
         /*
         // BIND teapot
         gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
-    //    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, teapotVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, teapotVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer);
-  //      gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, teapotVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, teapotVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
-//        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, teapotVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, teapotVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
-     //   setMatrixUniforms();
+        setMatrixUniforms();
         gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
         */
-        //return gl;
     }
 
     function loadTeapot() {
@@ -226,25 +228,19 @@
 
     // Key Handlers
     function keyHandler(e) {
-        // Space Bar for start/stop
-        if (e.keyCode == 32) {
+        if (e.keyCode == 32) { // Space Bar for start/stop
             if (incAngle != 0)
                 incAngle = 0;
             else
                 incAngle = 0.5;
         }
-
-        // Minus sign for speed up
-        if (e.keyCode == 189)
+        if (e.keyCode == 189) // Minus sign for speed up
             incAngle -= 0.1;
-        // Plus sign for speed up
-        if (e.keyCode == 187)
+        if (e.keyCode == 187) // Plus sign for speed up
             incAngle += 0.1;
-        // "B" for backwards rotation
-        if (e.keyCode == 66)
+        if (e.keyCode == 66) // "B" for backwards rotation
             reverse = true;
-        // "F" forward rotation
-        if (e.keyCode == 70)
+        if (e.keyCode == 70) // "F" forward rotation
             reverse = false;
         /*** Roll, Pitch, Yaw - X, Y, Z ****/
         // "R" for roll - shift for negative
@@ -257,11 +253,9 @@
             camPitch += 0.1;
         if (e.keyCode == 80 && e.shiftKey)
             camPitch -= 0.1;
-        // Left arrow for yaw
-        if (e.keyCode == 37)
+        if (e.keyCode == 37) // Left arrow for yaw
             camYaw -= 0.1;
-        // Right arrow for yaw
-        if (e.keyCode == 39)
+        if (e.keyCode == 39) // Right arrow for yaw
             camYaw += 0.1;
         // Orbits
         if (e.keyCode == 81) // "Q"
@@ -346,44 +340,17 @@
         var w = Math.floor(window.innerWidth * 0.9);
         var h = Math.floor(window.innerHeight * 0.9);
 
-        //c = WebGLDebugUtils.makeLostContextSimulatingCanvas(c);
-        // tell the simulator when to lose context.
-        //c.loseContextInNCalls(15);
-
-        c.addEventListener('webglcontextlost', handleContextLost, false);
-        c.addEventListener('webglcontextrestored', handleContextRestored, false);
-
         c.width = w;
         c.height = h;
 
         init();
-        /*var gl = init();
-        if (!gl) {
-            return;
-        }*/
-        // currentAngle = 0;
-        // incAngle = 0.5;
+    
         framerate = new Framerate("framerate");
         var f = function () {
             requestId = window.requestAnimFrame(f, c);
             drawPicture(gl);
         };
         f();
-
-        function handleContextLost(e) {
-            gl.console.log("handle context lost");
-            e.preventDefault();
-            if (requestId !== undefined) {
-                window.cancelRequestAnimFrame(requestId);
-                requestId = undefined;
-            }
-        }
-
-        function handleContextRestored() {
-            gl.console.log("handle context restored");
-            init();
-            f();
-        }
     }
 </script>
 <style type="text/css">
