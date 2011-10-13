@@ -1,0 +1,422 @@
+﻿
+<!DOCTYPE html>
+<!--
+/*
+ * Copyright (C) 2009 Apple Inc. All Rights Reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
+ * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+ * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+ * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+ -->
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<title>Spinning WebGL Box</title>
+
+<script type="text/javascript" src="https://cvs.khronos.org/svn/repos/registry/trunk/public/webgl/sdk/demos/common/webgl-utils.js"></script>
+<script type="text/javascript" src="https://cvs.khronos.org/svn/repos/registry/trunk/public/webgl/sdk/debug/webgl-debug.js"></script>
+<script src="https://cvs.khronos.org/svn/repos/registry/trunk/public/webgl/sdk/demos/webkit/resources/J3DI.js"> </script>
+<script src="https://cvs.khronos.org/svn/repos/registry/trunk/public/webgl/sdk/demos/webkit/resources/J3DIMath.js" type="text/javascript"> </script>
+<script src="http://code.jquery.com/jquery-1.6.4.min.js" type="text/javascript"> </script>
+
+<script src="toji-gl-matrix-218c908/gl-matrix-min.js" type="text/javascript"> </script>
+
+<script id="vshader" type="x-shader/x-vertex">
+    uniform mat4 u_modelViewProjMatrix;
+    uniform mat4 u_normalMatrix;
+    uniform vec3 lightDir;
+
+    attribute vec3 vNormal;
+    attribute vec4 vColor;
+    attribute vec4 vPosition;
+
+    varying float v_Dot;
+    varying vec4 v_Color;
+
+    void main()
+    {
+        gl_Position = u_modelViewProjMatrix * vPosition;
+        v_Color = vColor;
+        vec4 transNormal = u_normalMatrix * vec4(vNormal, 1);
+        v_Dot = max(dot(transNormal.xyz, lightDir), 0.0);
+    }
+</script>
+
+<script id="fshader" type="x-shader/x-fragment">
+    precision mediump float;
+
+    varying float v_Dot;
+    varying vec4 v_Color;
+
+    void main()
+    {
+        gl_FragColor = vec4(v_Color.xyz * v_Dot, v_Color.a);
+    }
+</script>
+
+<script>
+
+    function degToRad(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+    var gl;
+
+    function init() {
+        // Initialize
+        gl = initWebGL(
+        // The id of the Canvas Element
+            "example",
+        // The ids of the vertex and fragment shaders
+            "vshader", "fshader",
+        // The vertex attribute names used by the shaders.
+        // The order they appear here corresponds to their index
+        // used later.
+            ["vNormal", "vColor", "vPosition"],
+        // The clear color and depth values
+            [0, 0, 0, 1], 10000);
+        if (!gl) {
+            return;
+        }
+        //loadTeapot();
+
+        gl.console.log("Starting init...");        
+
+        // Set up mouse/keyboard events
+        $(window).keydown(keyHandler);
+
+        // Set up a uniform variable for the shaders
+        gl.uniform3f(gl.getUniformLocation(gl.program, "lightDir"), 0, 0, 1);
+
+        // Create a box. On return 'gl' contains a 'box' property with
+        // the BufferObjects containing the arrays for vertices,
+        // normals, texture coords, and indices.
+        gl.box = makeBox(gl);
+
+        // Set up the array of colors for the cube's faces
+        var colors = new Uint8Array(
+            [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1,     // v0-v1-v2-v3 front
+               1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1,     // v0-v3-v4-v5 right
+               0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,     // v0-v5-v6-v1 top
+               1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1,     // v1-v6-v7-v2 left
+               1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1,     // v7-v4-v3-v2 bottom
+               0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1]    // v4-v7-v6-v5 back
+                                                );
+
+        // Set up the vertex buffer for the colors
+        gl.box.colorObject = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.box.colorObject);
+        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
+
+        // Create some matrices to use later and save their locations in the shaders
+        gl.mvMatrix = new J3DIMatrix4();
+        gl.u_normalMatrixLoc = gl.getUniformLocation(gl.program, "u_normalMatrix");
+        gl.normalMatrix = new J3DIMatrix4();
+        gl.u_modelViewProjMatrixLoc =
+                gl.getUniformLocation(gl.program, "u_modelViewProjMatrix");
+        gl.mvpMatrix = new J3DIMatrix4();
+
+        // Enable all of the vertex attribute arrays.
+        gl.enableVertexAttribArray(0);
+        gl.enableVertexAttribArray(1);
+        gl.enableVertexAttribArray(2);
+
+        // Set up all the vertex attributes for vertices, normals and colors
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.box.vertexObject);
+        gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.box.normalObject);
+        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, gl.box.colorObject);
+        gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, false, 0, 0);
+
+        // Bind the index array
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.box.indexObject);
+        /*
+        // BIND teapot
+        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
+    //    gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, teapotVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer);
+  //      gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, teapotVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
+//        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, teapotVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
+     //   setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+        */
+        //return gl;
+    }
+
+    function loadTeapot() {
+        var request = new XMLHttpRequest();
+        request.open("GET", "teapot.json");
+        request.onreadystatechange = function () {
+            if (request.readyState == 4) {
+                handleLoadedTeapot(JSON.parse(request.responseText));
+            }
+        }
+        request.send();
+    }
+    var teapotVertexPositionBuffer;
+    var teapotVertexNormalBuffer;
+    var teapotVertexTextureCoordBuffer;
+    var teapotVertexIndexBuffer;
+
+    function handleLoadedTeapot(teapotData) {
+        teapotVertexNormalBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexNormals), gl.STATIC_DRAW);
+        teapotVertexNormalBuffer.itemSize = 3;
+        teapotVertexNormalBuffer.numItems = teapotData.vertexNormals.length / 3;
+
+        teapotVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexTextureCoords), gl.STATIC_DRAW);
+        teapotVertexTextureCoordBuffer.itemSize = 2;
+        teapotVertexTextureCoordBuffer.numItems = teapotData.vertexTextureCoords.length / 2;
+
+        teapotVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexPositions), gl.STATIC_DRAW);
+        teapotVertexPositionBuffer.itemSize = 3;
+        teapotVertexPositionBuffer.numItems = teapotData.vertexPositions.length / 3;
+
+        teapotVertexIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(teapotData.indices), gl.STATIC_DRAW);
+        teapotVertexIndexBuffer.itemSize = 1;
+        teapotVertexIndexBuffer.numItems = teapotData.indices.length;
+    }
+
+    width = -1;
+    height = -1;
+    var requestId;
+
+    var camPos = 90;
+    var camRoll = 1;
+    var camPitch = 0;
+    var camYaw = 0;
+    var incAngle = 0;
+
+    var reverse = false;
+    var quirkyOrbit = false;
+    var wackyOrbit = false;
+
+    // Key Handlers
+    function keyHandler(e) {
+        // Space Bar for start/stop
+        if (e.keyCode == 32) {
+            if (incAngle != 0)
+                incAngle = 0;
+            else
+                incAngle = 0.5;
+        }
+
+        // Minus sign for speed up
+        if (e.keyCode == 189)
+            incAngle -= 0.1;
+        // Plus sign for speed up
+        if (e.keyCode == 187)
+            incAngle += 0.1;
+        // "B" for backwards rotation
+        if (e.keyCode == 66)
+            reverse = true;
+        // "F" forward rotation
+        if (e.keyCode == 70)
+            reverse = false;
+        /*** Roll, Pitch, Yaw - X, Y, Z ****/
+        // "R" for roll - shift for negative
+        if (e.keyCode == 82 && !e.shiftKey)
+            camRoll += 0.1;
+        if (e.keyCode == 82 && e.shiftKey)
+            camRoll -= 0.1;
+        // "P" for pitch - shift for negative
+        if (e.keyCode == 80 && !e.shiftKey)
+            camPitch += 0.1;
+        if (e.keyCode == 80 && e.shiftKey)
+            camPitch -= 0.1;
+        // Left arrow for yaw
+        if (e.keyCode == 37)
+            camYaw -= 0.1;
+        // Right arrow for yaw
+        if (e.keyCode == 39)
+            camYaw += 0.1;
+        // Orbits
+        if (e.keyCode == 81) // "Q"
+            quirkyOrbit = !quirkyOrbit;
+        if (e.keyCode == 87) // "W"
+            wackyOrbit = !wackyOrbit;
+    }
+
+    function reshape(gl) {
+        var canvas = document.getElementById('example');
+        var windowWidth = window.innerWidth - 20;
+        var windowHeight = window.innerHeight - 40;
+        if (windowWidth == width && windowHeight == height)
+            return;
+
+        width = windowWidth;
+        height = windowHeight;
+        canvas.width = width;
+        canvas.height = height;
+
+        // Set the viewport and projection matrix for the scene
+        gl.viewport(0, 0, width, height);
+        gl.perspectiveMatrix = new J3DIMatrix4();
+
+        gl.perspectiveMatrix.perspective(30, width / height, 1, 10000);
+        gl.perspectiveMatrix.lookat(0, 0, 7, 0, 0, 0, 0, 1, 0);
+    }
+
+    function drawPicture(gl) {
+        // Make sure the canvas is sized correctly.
+        reshape(gl);
+
+        // Clear the canvas
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        // eye, center, up
+        if (wackyOrbit) {
+            /*mat4.rotate(gl.mvMatrix, degToRad(-camPitch), [1, 0, 0]);
+            mat4.rotate(gl.mvMatrix, degToRad(-camYaw), [0, 1, 0]);
+            mat4.translate(gl.mvMatrix, [-xPos, -yPos, -zPos]);*/
+            //gl.perspectiveMatrix.rotate(camPos, camRoll, camPitch, camYaw);
+            //gl.perspectiveMatrix.rotate(camPos, 20, 15, 30);
+            //mat4.rotate(
+            //gl.perspectiveMatrix.lookAt(0, 0, 0, 0);
+        }
+
+        // Make a model/view matrix.
+        gl.mvMatrix.makeIdentity();
+        gl.mvMatrix.rotate(camPos, camRoll, camPitch, camYaw);
+
+        // Construct the normal matrix from the model-view matrix and pass it in
+        gl.normalMatrix.load(gl.mvMatrix);
+        gl.normalMatrix.invert();
+        gl.normalMatrix.transpose();
+        gl.normalMatrix.setUniform(gl, gl.u_normalMatrixLoc, false);
+
+        // Construct the model-view * projection matrix and pass it in
+        gl.mvpMatrix.load(gl.perspectiveMatrix);
+        gl.mvpMatrix.multiply(gl.mvMatrix);
+        gl.mvpMatrix.setUniform(gl, gl.u_modelViewProjMatrixLoc, false);
+
+        gl.mvpMatrix.rotate(camPos, camRoll, camPitch, camYaw);
+
+        // Draw the cube
+        gl.drawElements(gl.TRIANGLES, gl.box.numIndices, gl.UNSIGNED_BYTE, 0);
+        // Draw the teapot
+        //gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+
+        // Show the framerate
+        framerate.snapshot();
+
+        if (reverse)
+            camPos -= incAngle;
+        else
+            camPos += incAngle;
+        if (camPos > 360)
+            camPos -= 360;
+    }
+
+    function start() {
+        var c = document.getElementById("example");
+        var w = Math.floor(window.innerWidth * 0.9);
+        var h = Math.floor(window.innerHeight * 0.9);
+
+        //c = WebGLDebugUtils.makeLostContextSimulatingCanvas(c);
+        // tell the simulator when to lose context.
+        //c.loseContextInNCalls(15);
+
+        c.addEventListener('webglcontextlost', handleContextLost, false);
+        c.addEventListener('webglcontextrestored', handleContextRestored, false);
+
+        c.width = w;
+        c.height = h;
+
+        init();
+        /*var gl = init();
+        if (!gl) {
+            return;
+        }*/
+        // currentAngle = 0;
+        // incAngle = 0.5;
+        framerate = new Framerate("framerate");
+        var f = function () {
+            requestId = window.requestAnimFrame(f, c);
+            drawPicture(gl);
+        };
+        f();
+
+        function handleContextLost(e) {
+            gl.console.log("handle context lost");
+            e.preventDefault();
+            if (requestId !== undefined) {
+                window.cancelRequestAnimFrame(requestId);
+                requestId = undefined;
+            }
+        }
+
+        function handleContextRestored() {
+            gl.console.log("handle context restored");
+            init();
+            f();
+        }
+    }
+</script>
+<style type="text/css">
+    canvas {
+        /* border: 2px solid black; */
+    }
+    .text {
+        position:absolute;
+        top:100px;
+        left:20px;
+        font-size:2em;
+        color: blue;
+    }
+</style>
+</head>
+
+<body onload="start()">
+<canvas id="example">
+    If you're seeing this your web browser doesn't support the &lt;canvas>&gt; element. Ouch!
+</canvas>
+<div class="text"></div>
+<div id="framerate"></div>
+<div>
+<ul>
+<li>Space Bar for stop/start</li>
+<li>"+/=" For speeding up</li>
+<li>"-/_" for slowing down</li>
+<li>"R" for reverse rotation</li>
+<li>"F" for forward rotation</li>
+<li>Left arrow for left yaw</li>
+<li>Right arrow for right yaw</li>
+</ul>
+</div>
+</body>
+
+</html>
