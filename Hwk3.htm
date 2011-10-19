@@ -376,7 +376,6 @@
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.box.indexObject);
         */
 
-        console.log(teapotData);
         // BIND teapot
         teapotVertexNormalBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
@@ -401,66 +400,23 @@
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(teapotData.indices), gl.STATIC_DRAW);
         teapotVertexIndexBuffer.itemSize = 1;
         teapotVertexIndexBuffer.numItems = teapotData.indices.length;
-
-
-        console.log(teapotVertexPositionBuffer);
-        /*
-        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, teapotVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer);
-        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, teapotVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, teapotVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
-        */
     }
+
+    var teapotVertexPositionBuffer;
+    var teapotVertexNormalBuffer;
+    var teapotVertexTextureCoordBuffer;
+    var teapotVertexIndexBuffer;
 
     function loadTeapot() {
         var request = new XMLHttpRequest();
         request.open("GET", "teapot.json");
         request.onreadystatechange = function () {
             if (request.readyState == 4) {
-                console.log('first - now handle loaded');
-                // handleLoadedTeapot(JSON.parse(request.responseText));
                 teapotData = JSON.parse(request.responseText);
                 start();
             }
         }
-        console.log(request);
         request.send();
-    }
-    var teapotVertexPositionBuffer;
-    var teapotVertexNormalBuffer;
-    var teapotVertexTextureCoordBuffer;
-    var teapotVertexIndexBuffer;
-
-    function handleLoadedTeapot(teapotData) {
-        teapotVertexNormalBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexNormals), gl.STATIC_DRAW);
-        teapotVertexNormalBuffer.itemSize = 3;
-        teapotVertexNormalBuffer.numItems = teapotData.vertexNormals.length / 3;
-
-        teapotVertexTextureCoordBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexTextureCoords), gl.STATIC_DRAW);
-        teapotVertexTextureCoordBuffer.itemSize = 2;
-        teapotVertexTextureCoordBuffer.numItems = teapotData.vertexTextureCoords.length / 2;
-
-        teapotVertexPositionBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexPositions), gl.STATIC_DRAW);
-        teapotVertexPositionBuffer.itemSize = 3;
-        teapotVertexPositionBuffer.numItems = teapotData.vertexPositions.length / 3;
-
-        teapotVertexIndexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(teapotData.indices), gl.STATIC_DRAW);
-        teapotVertexIndexBuffer.itemSize = 1;
-        teapotVertexIndexBuffer.numItems = teapotData.indices.length;
     }
 
     width = -1;
@@ -549,7 +505,75 @@
     var pMatrix = mat4.create();
     var camera = mat4.create();
 
+    function mvPushMatrix() {
+        var copy = mat4.create();
+        mat4.set(mvMatrix, copy);
+        mvMatrixStack.push(copy);
+    }
+
+    function mvPopMatrix() {
+        if (mvMatrixStack.length == 0) {
+            throw "Invalid popMatrix!";
+        }
+        mvMatrix = mvMatrixStack.pop();
+    }
+
     function drawPicture(gl) {
+        reshape(gl);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        mat4.identity(pMatrix);
+        mvPushMatrix();
+        // mat4.perspective(fovy, aspect, near, far, dest)
+        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+        mat4.lookAt(camPos, camRoll, camPitch, camYaw);
+        //mat4.rotate(pMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
+        mvPopMatrix();
+
+        mat4.identity(mvMatrix);
+        // PUSH
+        //mvPushMatrix();
+        //mat4.rotate(mvMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
+        // PUSH
+        mvPushMatrix();
+        mat4.translate(mvMatrix, [0, 0.0, -8.0]);
+        /**** DRAW CUBE ****/
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, cubeVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+        /**** END CUBE ****/
+        
+        // PUSH
+        //mvPushMatrix();
+        mat4.translate(mvMatrix, [0, 18, -65]);
+        /**** DRAW TEAPOT ****/
+        // TO DO -shininess and texture
+        /*gl.uniform1i(shaderProgram.samplerUniform, 0);
+        gl.uniform1f(shaderProgram.materialShininessUniform, 10);*/
+        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, teapotVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        /*gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, teapotVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);*/
+        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
+        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, teapotVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
+        setMatrixUniforms();
+        gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+        /**** END TEAPOT ****/
+        mvPopMatrix();
+
+        if (reverse)
+            camPos -= incAngle;
+        else
+            camPos += incAngle;
+        if (camPos > 360)
+            camPos -= 360;
+    }
+
+    function XXXdrawPicture(gl) {
         // Make sure the canvas is sized correctly.
         reshape(gl);
 
@@ -571,7 +595,10 @@
         //gl.mvMatrix.makeIdentity();
         //gl.mvMatrix.rotate(camPos, camRoll, camPitch, camYaw);
         mat4.identity(mvMatrix);
-        mat4.translate(mvMatrix, [-1.5, 0.0, -8.0]);
+// Camera rotation?? v
+        //mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
+        mat4.translate(mvMatrix, [0, 0.0, -8.0]);
+        mvPushMatrix();
         //mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
@@ -581,11 +608,12 @@
         gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, cubeVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+        //mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
         setMatrixUniforms();
         gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
         
         // Draw the teapot
-        mat4.translate(mvMatrix, [-1.5, 10, -80]);
+        mat4.translate(mvMatrix, [0, 18, -65]);
         // TO DO -shininess and texture
         gl.uniform1i(shaderProgram.samplerUniform, 0);
         gl.uniform1f(shaderProgram.materialShininessUniform, 10);
@@ -597,9 +625,12 @@
         gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, teapotVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
-        mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
+        //mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
         setMatrixUniforms();
         gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+
+        mvPopMatrix();
+        mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
 
         // Construct the normal matrix from the model-view matrix and pass it in
         /*mat4.identity(normalMatrix);
@@ -614,9 +645,10 @@
         gl.mvMatrix.multiply(gl.mvMatrix);
         gl.mvMatrix.setUniform(gl, gl.u_modelViewProjMatrixLoc, false);*/
 
-        mat4.identity(camera);
-        mat4.rotate(camPos, camRoll, camPitch, camYaw);
-        mat4.lookAt(camPos, camRoll, camPitch, camYaw);
+        //mat4.identity(camera);
+        
+        /*mat4.rotate(camPos, camRoll, camPitch, camYaw);
+        mat4.lookAt(camPos, camRoll, camPitch, camYaw);*/
 
         if (reverse)
             camPos -= incAngle;
