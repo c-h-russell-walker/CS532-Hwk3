@@ -121,6 +121,38 @@
         gl_FragColor = vColor;
     }
 </script>
+<script id="per-fragment-lighting-fs" type="x-shader/x-fragment">
+    #ifdef GL_ES
+    precision highp float;
+    #endif
+    varying vec2 vTextureCoord;
+    varying vec3 vTransformedNormal;
+    varying vec4 vPosition;
+
+    uniform float uMaterialShininess;
+
+    uniform vec3 uAmbientColor;
+    uniform vec3 uPointLightingLocation;
+    uniform vec3 uPointLightingSpecularColor;
+    uniform vec3 uPointLightingDiffuseColor;
+    uniform sampler2D uSampler;
+    void main(void) {
+    vec3 lightWeighting;
+    vec3 lightDirection = normalize(uPointLightingLocation - vPosition.xyz);
+    vec3 normal = normalize(vTransformedNormal);
+    float specularLightWeighting = 0.0;
+    vec3 eyeDirection = normalize(-vPosition.xyz);
+    vec3 reflectionDirection = reflect(-lightDirection, normal);
+    specularLightWeighting = pow(max(dot(reflectionDirection, eyeDirection), 0.0), uMaterialShininess);
+    float diffuseLightWeighting = max(dot(normal, lightDirection), 0.0);
+    lightWeighting = uAmbientColor
+        + uPointLightingSpecularColor * specularLightWeighting
+        + uPointLightingDiffuseColor * diffuseLightWeighting;
+    vec4 fragmentColor;
+    fragmentColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
+    gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
+    }
+</script>
 <script id="fshader-khronos" type="x-shader/x-fragment">
     precision mediump float;
 
@@ -186,7 +218,7 @@
         if (!shaderScript) {
             return null;
         }
-
+        
         var str = "";
         var k = shaderScript.firstChild;
         while (k) {
@@ -233,9 +265,9 @@
         if (!gl) {
             return;
         }*/
-        
-        initShaders();
 
+        initShaders();
+        gl.enable(gl.DEPTH_TEST);
         // Set up mouse/keyboard events
         $(window).keydown(keyHandler);
 
@@ -423,7 +455,8 @@
     height = -1;
     var requestId;
 
-    var camPos = 90;
+    var cubePos = 0;
+    var camPos = 0;
     var camRoll = 1;
     var camPitch = 0;
     var camYaw = 0;
@@ -483,15 +516,16 @@
         canvas.width = width;
         canvas.height = height;
 
-        // Set the viewport and projection matrix for the scene
         gl.viewport(0, 0, width, height);
-        // Clear the canvas
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        //gl.perspectiveMatrix = new J3DIMatrix4();
+        mat4.identity(pMatrix);
+        mvPushMatrix();
+        // mat4.perspective(fovy, aspect, near, far, dest)
         mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-        //mat4.perspective(30, width / height, 1, 10000);
-        //gl.perspectiveMatrix.perspective(30, width / height, 1, 10000);
-        //mat4.lookAt(0, 0, 7, 0, 0, 0, 0, 1, 0);
+        //mat4.lookAt(camPos, camRoll, camPitch, camYaw);
+        //mat4.translate(pMatrix, [0, 0, 0]);
+        //mat4.rotate(mvMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
+        //mvPopMatrix();
         //gl.perspectiveMatrix.lookat(0, 0, 7, 0, 0, 0, 0, 1, 0);
     }
 
@@ -520,22 +554,16 @@
 
     function drawPicture(gl) {
         reshape(gl);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        mat4.identity(pMatrix);
-        mvPushMatrix();
-        // mat4.perspective(fovy, aspect, near, far, dest)
-        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-        mat4.lookAt(camPos, camRoll, camPitch, camYaw);
-        //mat4.rotate(pMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
-        mvPopMatrix();
 
         mat4.identity(mvMatrix);
-        // PUSH
-        //mvPushMatrix();
         //mat4.rotate(mvMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
-        // PUSH
-        mvPushMatrix();
+        // Translates both cube and teapot
         mat4.translate(mvMatrix, [0, 0.0, -8.0]);
+
+        // PUSH -cube
+        mvPushMatrix();
+        // If need to translate Cube do it here
+        mat4.rotate(mvMatrix, degToRad(cubePos), [0, 1, 0]);
         /**** DRAW CUBE ****/
         gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
@@ -544,15 +572,24 @@
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
         setMatrixUniforms();
         gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+        mvPopMatrix();
         /**** END CUBE ****/
-        
-        // PUSH
-        //mvPushMatrix();
+
+        // PUSH - rotation
+        /*mvPushMatrix();
+        mat4.rotate(mvMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
+        mvPopMatrix();*/
+
+        // PUSH - teapot
+        mvPushMatrix();
+        //mat4.rotate(mvMatrix, degToRad(90), [0, 0, 0]);
+        //mat4.rotate(mvMatrix, degToRad(cubePos), [0, 0, 1]);
         mat4.translate(mvMatrix, [0, 18, -65]);
+        //mat4.translate(mvMatrix, [0, 18, -65]);
         /**** DRAW TEAPOT ****/
         // TO DO -shininess and texture
-        /*gl.uniform1i(shaderProgram.samplerUniform, 0);
-        gl.uniform1f(shaderProgram.materialShininessUniform, 10);*/
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
+        gl.uniform1f(shaderProgram.materialShininessUniform, 10);
         gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
         gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, teapotVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
         /*gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer);
@@ -564,13 +601,21 @@
         gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
         /**** END TEAPOT ****/
         mvPopMatrix();
-
+        
+        /*
+        mat4.identity(mvMatrix);
+        mvPushMatrix();
+        mat4.translate(mvMatrix, [0, 0, 0]);
+        mat4.rotate(mvMatrix, degToRad(30), [0, 1, 0]);
+        setMatrixUniforms();
+        mvPopMatrix();
+        */
         if (reverse)
-            camPos -= incAngle;
+            cubePos -= incAngle;
         else
-            camPos += incAngle;
-        if (camPos > 360)
-            camPos -= 360;
+            cubePos += incAngle;
+        if (cubePos > 360)
+            cubePos -= 360;
     }
 
     function XXXdrawPicture(gl) {
