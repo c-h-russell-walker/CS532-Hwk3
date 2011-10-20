@@ -152,7 +152,7 @@
     fragmentColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
     gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
     }
-</script>
+</script>
 <script id="fshader-khronos" type="x-shader/x-fragment">
     precision mediump float;
 
@@ -164,9 +164,7 @@
         gl_FragColor = vec4(v_Color.xyz * v_Dot, v_Color.a);
     }
 </script>
-
 <script>
-
     function degToRad(degrees) {
         return degrees * Math.PI / 180;
     }
@@ -249,28 +247,11 @@
     }
 
     function init() {
-        // Initialize
-        /*
-        gl = initWebGL(
-        // The id of the Canvas Element
-            "hwk-3",
-        // The ids of the vertex and fragment shaders
-            "vshader", "fshader",
-        // The vertex attribute names used by the shaders.
-        // The order they appear here corresponds to their index
-        // used later.
-            ["vNormal", "vColor", "vPosition"],
-        // The clear color and depth values
-            [0, 0, 0, 1], 10000);
-        if (!gl) {
-            return;
-        }*/
-
         initShaders();
         gl.enable(gl.DEPTH_TEST);
         // Set up mouse/keyboard events
         $(window).keydown(keyHandler);
-
+        
         // Set up a uniform variable for the shaders
         gl.uniform3f(gl.getUniformLocation(gl.program, "lightDir"), 0, 0, 1);
 
@@ -319,15 +300,8 @@
 
         cubeVertexColorBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
-        /*colors = [
-            [1.0, 0.0, 0.0, 1.0], // Front face
-            [1.0, 1.0, 0.0, 1.0], // Back face
-            [0.0, 1.0, 0.0, 1.0], // Top face
-            [1.0, 0.5, 0.5, 1.0], // Bottom face
-            [1.0, 0.0, 1.0, 1.0], // Right face
-            [0.0, 0.0, 1.0, 1.0]  // Left face
-        ];*/
-        var unpackedColors = new Uint8Array(
+
+        var colors = new Uint8Array(
             [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1,     // v0-v1-v2-v3 front
                1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1,     // v0-v3-v4-v5 right
                0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,     // v0-v5-v6-v1 top
@@ -335,14 +309,7 @@
                1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1,     // v7-v4-v3-v2 bottom
                0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1]    // v4-v7-v6-v5 back
                                                 );
-        /*var unpackedColors = [];
-        for (var i in colors) {
-            var color = colors[i];
-            for (var j=0; j < 4; j++) {
-                unpackedColors = unpackedColors.concat(color);
-            }
-        }*/
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(unpackedColors), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
         cubeVertexColorBuffer.itemSize = 4;
         cubeVertexColorBuffer.numItems = 24;
 
@@ -365,21 +332,6 @@
         // the BufferObjects containing the arrays for vertices,
         // normals, texture coords, and indices.
         gl.box = makeBox(gl);
-
-        // Set up the array of colors for the cube's faces
-        var colors = new Uint8Array(
-            [0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1,     // v0-v1-v2-v3 front
-               1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1,     // v0-v3-v4-v5 right
-               0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1,     // v0-v5-v6-v1 top
-               1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1,     // v1-v6-v7-v2 left
-               1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1,     // v7-v4-v3-v2 bottom
-               0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1]    // v4-v7-v6-v5 back
-                                                );
-
-        // Set up the vertex buffer for the colors
-        gl.box.colorObject = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, gl.box.colorObject);
-        gl.bufferData(gl.ARRAY_BUFFER, colors, gl.STATIC_DRAW);
 
         // Create some matrices to use later and save their locations in the shaders
         gl.mvMatrix = new J3DIMatrix4();
@@ -456,6 +408,7 @@
     var requestId;
 
     var cubePos = 0;
+    var camDist = 45;
     var camPos = 0;
     var camRoll = 1;
     var camPitch = 0;
@@ -519,14 +472,16 @@
         gl.viewport(0, 0, width, height);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         mat4.identity(pMatrix);
+        mat4.translate(pMatrix, [0, 0, 0]);
         mvPushMatrix();
         // mat4.perspective(fovy, aspect, near, far, dest)
-        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-        //mat4.lookAt(camPos, camRoll, camPitch, camYaw);
-        //mat4.translate(pMatrix, [0, 0, 0]);
-        //mat4.rotate(mvMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
-        //mvPopMatrix();
-        //gl.perspectiveMatrix.lookat(0, 0, 7, 0, 0, 0, 0, 1, 0);
+        mat4.perspective(camDist, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+        // mat4.lookat(eye, center, up, dest)
+        mat4.lookAt([0, 0, 1.5], [0, 0, -0.5], [0, 1, 0], mvMatrix);
+        //mat4.rotate(pMatrix, degToRad(camPos), [degToRad(45), degToRad(camPitch), degToRad(camYaw)]);
+        console.log(mat4.lookAt([0, 0, 1.5], [0, 0, -0.5], [0, 1, 0], mvMatrix));
+        console.log(mat4);
+        mvPopMatrix();
     }
 
     function setMatrixUniforms() {
@@ -571,14 +526,10 @@
         gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, cubeVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
         setMatrixUniforms();
+
         gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
         mvPopMatrix();
         /**** END CUBE ****/
-
-        // PUSH - rotation
-        /*mvPushMatrix();
-        mat4.rotate(mvMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
-        mvPopMatrix();*/
 
         // PUSH - teapot
         mvPushMatrix();
@@ -601,106 +552,21 @@
         gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
         /**** END TEAPOT ****/
         mvPopMatrix();
-        
+
         /*
-        mat4.identity(mvMatrix);
-        mvPushMatrix();
-        mat4.translate(mvMatrix, [0, 0, 0]);
-        mat4.rotate(mvMatrix, degToRad(30), [0, 1, 0]);
-        setMatrixUniforms();
-        mvPopMatrix();
-        */
+        // Construct the normal matrix from the model-view matrix and pass it in
+        mat4.identity(normalMatrix);
+        mat4.load(gl.mvMatrix);
+        mat4.invert();
+        mat4.transpose();
+        mat4.setUniform(gl, gl.u_normalMatrixLoc, false);*/
+        
         if (reverse)
             cubePos -= incAngle;
         else
             cubePos += incAngle;
         if (cubePos > 360)
             cubePos -= 360;
-    }
-
-    function XXXdrawPicture(gl) {
-        // Make sure the canvas is sized correctly.
-        reshape(gl);
-
-        // Clear the canvas
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-        // eye, center, up
-        if (wackyOrbit) {
-            /*mat4.rotate(gl.mvMatrix, degToRad(-camPitch), [1, 0, 0]);
-            mat4.rotate(gl.mvMatrix, degToRad(-camYaw), [0, 1, 0]);
-            mat4.translate(gl.mvMatrix, [-xPos, -yPos, -zPos]);*/
-            //gl.perspectiveMatrix.rotate(camPos, camRoll, camPitch, camYaw);
-            //gl.perspectiveMatrix.rotate(camPos, 20, 15, 30);
-            //mat4.rotate(
-            //gl.perspectiveMatrix.lookAt(0, 0, 0, 0);
-        }
-
-        // Make a model/view matrix.
-        //gl.mvMatrix.makeIdentity();
-        //gl.mvMatrix.rotate(camPos, camRoll, camPitch, camYaw);
-        mat4.identity(mvMatrix);
-// Camera rotation?? v
-        //mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
-        mat4.translate(mvMatrix, [0, 0.0, -8.0]);
-        mvPushMatrix();
-        //mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexColorBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexColorAttribute, cubeVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
-        //mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
-        setMatrixUniforms();
-        gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
-        
-        // Draw the teapot
-        mat4.translate(mvMatrix, [0, 18, -65]);
-        // TO DO -shininess and texture
-        gl.uniform1i(shaderProgram.samplerUniform, 0);
-        gl.uniform1f(shaderProgram.materialShininessUniform, 10);
-        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexPositionBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexPositionAttribute, teapotVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer);
-        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, teapotVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
-        gl.vertexAttribPointer(shaderProgram.vertexNormalAttribute, teapotVertexNormalBuffer.itemSize, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, teapotVertexIndexBuffer);
-        //mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
-        setMatrixUniforms();
-        gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
-
-        mvPopMatrix();
-        mat4.rotate(mvMatrix, degToRad(camPos), [1, 1, 1]);
-
-        // Construct the normal matrix from the model-view matrix and pass it in
-        /*mat4.identity(normalMatrix);
-        mat4.load(gl.mvMatrix);
-        mat4.invert();
-        mat4.transpose();
-        mat4.setUniform(gl, gl.u_normalMatrixLoc, false);*/
-        
-        // Construct the model-view * projection matrix and pass it in
-        //mat4.identity(mvpMatrix);
-        /*gl.mvMatrix.load(gl.perspectiveMatrix);
-        gl.mvMatrix.multiply(gl.mvMatrix);
-        gl.mvMatrix.setUniform(gl, gl.u_modelViewProjMatrixLoc, false);*/
-
-        //mat4.identity(camera);
-        
-        /*mat4.rotate(camPos, camRoll, camPitch, camYaw);
-        mat4.lookAt(camPos, camRoll, camPitch, camYaw);*/
-
-        if (reverse)
-            camPos -= incAngle;
-        else
-            camPos += incAngle;
-        if (camPos > 360)
-            camPos -= 360;
     }
 
     function start() {
