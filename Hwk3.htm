@@ -37,33 +37,6 @@
 <script type="text/javascript" src="https://cvs.khronos.org/svn/repos/registry/trunk/public/webgl/sdk/debug/webgl-debug.js"></script>
 <script src="http://code.jquery.com/jquery-1.6.4.min.js" type="text/javascript"> </script>
 <script src="toji-gl-matrix-218c908/gl-matrix.js" type="text/javascript"> </script>
-<script id="vshader" type="x-shader/x-vertex">
-    attribute vec3 aVertexPosition;
-    attribute vec4 aVertexColor;
-
-    uniform mat4 uMVMatrix;
-    uniform mat4 uPMatrix;
-
-    uniform mat4 u_modelViewProjMatrix;
-    uniform mat4 u_normalMatrix;
-    uniform vec3 lightDir;
-
-    attribute vec3 vNormal;
-    attribute vec4 vColor;
-    attribute vec4 vPosition;
-
-    varying float v_Dot;
-    varying vec4 v_Color;
-
-    void main(void) {
-        gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
-        vColor = aVertexColor;
-        //gl_Position = u_modelViewProjMatrix * vPosition;
-        v_Color = vColor;
-        vec4 transNormal = u_normalMatrix * vec4(vNormal, 1);
-        v_Dot = max(dot(transNormal.xyz, lightDir), 0.0);
-    }
-</script>
 <script id="vshader-lesson4" type="x-shader/x-vertex">
     attribute vec3 aVertexPosition;
     attribute vec4 aVertexColor;
@@ -78,39 +51,6 @@
         vColor = aVertexColor;
     }
 </script>
-<script id="vshader-khronos" type="x-shader/x-vertex">
-    uniform mat4 u_modelViewProjMatrix;
-    uniform mat4 u_normalMatrix;
-    uniform vec3 lightDir;
-
-    attribute vec3 vNormal;
-    attribute vec4 vColor;
-    attribute vec4 vPosition;
-
-    varying float v_Dot;
-    varying vec4 v_Color;
-
-    void main()
-    {
-        gl_Position = u_modelViewProjMatrix * vPosition;
-        v_Color = vColor;
-        vec4 transNormal = u_normalMatrix * vec4(vNormal, 1);
-        v_Dot = max(dot(transNormal.xyz, lightDir), 0.0);
-    }
-</script>
-<script id="fshader" type="x-shader/x-fragment">
-    #ifdef GL_ES
-    precision highp float;
-    precision mediump float;
-    #endif
-
-    varying float vDot;
-    varying vec4 v_Color;
-
-    void main(void) {
-        gl_FragColor = vec4(v_Color.xyz * vDot, v_Color.a);
-    }
-</script>
 <script id="fshader-lesson4" type="x-shader/x-fragment">
     #ifdef GL_ES
     precision highp float;
@@ -119,49 +59,6 @@
     
     void main(void) {
         gl_FragColor = vColor;
-    }
-</script>
-<script id="per-fragment-lighting-fs" type="x-shader/x-fragment">
-    #ifdef GL_ES
-    precision highp float;
-    #endif
-    varying vec2 vTextureCoord;
-    varying vec3 vTransformedNormal;
-    varying vec4 vPosition;
-
-    uniform float uMaterialShininess;
-
-    uniform vec3 uAmbientColor;
-    uniform vec3 uPointLightingLocation;
-    uniform vec3 uPointLightingSpecularColor;
-    uniform vec3 uPointLightingDiffuseColor;
-    uniform sampler2D uSampler;
-    void main(void) {
-    vec3 lightWeighting;
-    vec3 lightDirection = normalize(uPointLightingLocation - vPosition.xyz);
-    vec3 normal = normalize(vTransformedNormal);
-    float specularLightWeighting = 0.0;
-    vec3 eyeDirection = normalize(-vPosition.xyz);
-    vec3 reflectionDirection = reflect(-lightDirection, normal);
-    specularLightWeighting = pow(max(dot(reflectionDirection, eyeDirection), 0.0), uMaterialShininess);
-    float diffuseLightWeighting = max(dot(normal, lightDirection), 0.0);
-    lightWeighting = uAmbientColor
-        + uPointLightingSpecularColor * specularLightWeighting
-        + uPointLightingDiffuseColor * diffuseLightWeighting;
-    vec4 fragmentColor;
-    fragmentColor = texture2D(uSampler, vec2(vTextureCoord.s, vTextureCoord.t));
-    gl_FragColor = vec4(fragmentColor.rgb * lightWeighting, fragmentColor.a);
-    }
-</script>
-<script id="fshader-khronos" type="x-shader/x-fragment">
-    precision mediump float;
-
-    varying float v_Dot;
-    varying vec4 v_Color;
-
-    void main()
-    {
-        gl_FragColor = vec4(v_Color.xyz * v_Dot, v_Color.a);
     }
 </script>
 <script>
@@ -209,6 +106,7 @@
 
         shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
         shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+        shaderProgram.cubeMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
     }
 
     function getShader(gl, id) {
@@ -253,7 +151,8 @@
         $(window).keydown(keyHandler);
         
         // Set up a uniform variable for the shaders
-        gl.uniform3f(gl.getUniformLocation(gl.program, "lightDir"), 0, 0, 1);
+        // Not used yet
+        // gl.uniform3f(gl.getUniformLocation(gl.program, "lightDir"), 0, 0, 1);
 
         cubeVertexPositionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
@@ -327,40 +226,7 @@
         cubeVertexIndexBuffer.itemSize = 1;
         cubeVertexIndexBuffer.numItems = 36;
 
-        /*
-        // Create a box. On return 'gl' contains a 'box' property with
-        // the BufferObjects containing the arrays for vertices,
-        // normals, texture coords, and indices.
-        gl.box = makeBox(gl);
-
-        // Create some matrices to use later and save their locations in the shaders
-        gl.mvMatrix = new J3DIMatrix4();
-        gl.u_normalMatrixLoc = gl.getUniformLocation(gl.program, "u_normalMatrix");
-        gl.normalMatrix = new J3DIMatrix4();
-        gl.u_modelViewProjMatrixLoc =
-                gl.getUniformLocation(gl.program, "u_modelViewProjMatrix");
-        gl.mvpMatrix = new J3DIMatrix4();
-
-        // Enable all of the vertex attribute arrays.
-        gl.enableVertexAttribArray(0);
-        gl.enableVertexAttribArray(1);
-        gl.enableVertexAttribArray(2);
-
-        // Set up all the vertex attributes for vertices, normals and colors
-        gl.bindBuffer(gl.ARRAY_BUFFER, gl.box.vertexObject);
-        gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, gl.box.normalObject);
-        gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0);
-
-        gl.bindBuffer(gl.ARRAY_BUFFER, gl.box.colorObject);
-        gl.vertexAttribPointer(1, 4, gl.UNSIGNED_BYTE, false, 0, 0);
-
-        // Bind the index array
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, gl.box.indexObject);
-        */
-
-        // BIND teapot
+        // Teapot Buffers
         teapotVertexNormalBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexNormalBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexNormals), gl.STATIC_DRAW);
@@ -431,7 +297,7 @@
             incAngle -= 0.1;
         if (e.keyCode == 187) // Plus sign for speed up
             incAngle += 0.1;
-        if (e.keyCode == 66) // "B" for backwards rotation
+        if (e.keyCode == 82) // "R" for reverse rotation
             reverse = true;
         if (e.keyCode == 70) // "F" forward rotation
             reverse = false;
@@ -476,20 +342,21 @@
         mvPushMatrix();
         // mat4.perspective(fovy, aspect, near, far, dest)
         mat4.perspective(camDist, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+        // mat4.multiply(mvMatrix, pMatrix);
         // mat4.lookat(eye, center, up, dest)
-        mat4.lookAt([0, 0, 1.5], [0, 0, -0.5], [0, 1, 0], mvMatrix);
-        //mat4.rotate(pMatrix, degToRad(camPos), [degToRad(45), degToRad(camPitch), degToRad(camYaw)]);
-        console.log(mat4.lookAt([0, 0, 1.5], [0, 0, -0.5], [0, 1, 0], mvMatrix));
-        console.log(mat4);
+        mat4.lookAt([0, 0, -1.5], [0, 0, -0.5], [0, 1, 0], mvMatrix);
+        mat4.rotate(pMatrix, degToRad(camPos), [degToRad(45), degToRad(camPitch), degToRad(camYaw)]);
         mvPopMatrix();
     }
 
     function setMatrixUniforms() {
         gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(shaderProgram.cubeMatrixUniform, false, cubeMatrix);
         gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
     }
 
     var mvMatrix = mat4.create();
+    var cubeMatrix = mat4.create();
     var mvMatrixStack = [];
     var pMatrix = mat4.create();
     var camera = mat4.create();
@@ -515,8 +382,9 @@
         // Translates both cube and teapot
         mat4.translate(mvMatrix, [0, 0.0, -8.0]);
 
-        // PUSH -cube
+        // PUSH - cube
         mvPushMatrix();
+        mat4.identity(cubeMatrix);
         // If need to translate Cube do it here
         mat4.rotate(mvMatrix, degToRad(cubePos), [0, 1, 0]);
         /**** DRAW CUBE ****/
@@ -533,10 +401,7 @@
 
         // PUSH - teapot
         mvPushMatrix();
-        //mat4.rotate(mvMatrix, degToRad(90), [0, 0, 0]);
-        //mat4.rotate(mvMatrix, degToRad(cubePos), [0, 0, 1]);
         mat4.translate(mvMatrix, [0, 18, -65]);
-        //mat4.translate(mvMatrix, [0, 18, -65]);
         /**** DRAW TEAPOT ****/
         // TO DO -shininess and texture
         gl.uniform1i(shaderProgram.samplerUniform, 0);
@@ -552,14 +417,6 @@
         gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
         /**** END TEAPOT ****/
         mvPopMatrix();
-
-        /*
-        // Construct the normal matrix from the model-view matrix and pass it in
-        mat4.identity(normalMatrix);
-        mat4.load(gl.mvMatrix);
-        mat4.invert();
-        mat4.transpose();
-        mat4.setUniform(gl, gl.u_normalMatrixLoc, false);*/
         
         if (reverse)
             cubePos -= incAngle;
@@ -596,13 +453,15 @@
 <div id="framerate"></div>
 <div>
 <ul>
-<li>Space Bar for stop/start</li>
-<li>"+/=" For speeding up</li>
-<li>"-/_" for slowing down</li>
-<li>"R" for reverse rotation</li>
-<li>"F" for forward rotation</li>
-<li>Left arrow for left yaw</li>
-<li>Right arrow for right yaw</li>
+<li style="display: inline;">Space Bar for stop/start |</li>
+<li style="display: inline;">"+/=" For speeding up |</li>
+<li style="display: inline;">"-/_" for slowing down |</li>
+<li style="display: inline;">"R" for reverse rotation |</li>
+<li style="display: inline;">"F" for forward rotation |</li>
+<li style="display: inline;">Left arrow for left yaw |</li>
+<li style="display: inline;">Right arrow for right yaw |</li>
+<li style="display: inline;">"R" for roll - hold shift for negative |</li>
+<li style="display: inline;">"P" for pitch - hold shift for negative</li>
 </ul>
 </div>
 </body>
