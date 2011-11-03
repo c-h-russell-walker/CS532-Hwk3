@@ -38,27 +38,36 @@
 <script src="http://code.jquery.com/jquery-1.6.4.min.js" type="text/javascript"> </script>
 <script src="toji-gl-matrix-218c908/gl-matrix.js" type="text/javascript"> </script>
 <script id="vshader-lesson4" type="x-shader/x-vertex">
-    attribute vec3 aVertexPosition;
-    attribute vec4 aVertexColor;
-
     uniform mat4 uMVMatrix;
     uniform mat4 uPMatrix;
+
+    attribute vec3 aVertexPosition;
+    attribute vec4 aVertexColor;
+    attribute vec2 aTexture;
     
     varying vec4 vColor;
+    varying vec2 vTexture;
     
     void main(void) {
         gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
         vColor = aVertexColor;
+        vTexture = aTexture;
     }
 </script>
 <script id="fshader-lesson4" type="x-shader/x-fragment">
     #ifdef GL_ES
     precision highp float;
-    #endif
+    #endif
+
+    uniform sampler2D uTexture;
+
     varying vec4 vColor;
+    varying vec2 vTexture;
     
     void main(void) {
-        gl_FragColor = vColor;
+        vec4 teaColor = texture2D(uTexture, vTexture);
+
+        gl_FragColor = mix(vColor, teaColor, teaColor.a);
     }
 </script>
 <script>
@@ -106,6 +115,7 @@
 
         shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
         shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+
         shaderProgram.cubeMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
     }
 
@@ -233,8 +243,17 @@
         teapotVertexNormalBuffer.itemSize = 3;
         teapotVertexNormalBuffer.numItems = teapotData.vertexNormals.length / 3;
 
+        var flowerTexture = gl.createTexture();
+        flowerTexture.image = new Image();
+        flowerTexture.image.src = "textures/Chrysanthemum.jpg";
+        console.log(flowerTexture);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, flowerTexture);
+        gl.uniform1i(shaderProgram.samplerUniform, 0);
         teapotVertexTextureCoordBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer);
+        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, teapotVertexTextureCoordBuffer.itmeSize, gl.FLOAT, false, 0, 0); 
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexTextureCoords), gl.STATIC_DRAW);
         teapotVertexTextureCoordBuffer.itemSize = 2;
         teapotVertexTextureCoordBuffer.numItems = teapotData.vertexTextureCoords.length / 2;
@@ -344,8 +363,8 @@
         mat4.perspective(camDist, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
         // mat4.multiply(mvMatrix, pMatrix);
         // mat4.lookat(eye, center, up, dest)
-        mat4.lookAt([0, 0, -1.5], [0, 0, -0.5], [0, 1, 0], mvMatrix);
-        mat4.rotate(pMatrix, degToRad(camPos), [degToRad(45), degToRad(camPitch), degToRad(camYaw)]);
+        //mat4.lookAt([0, 0, -1.5], [0, 0, -0.5], [0, 1, 0], mvpMatrix);
+        //mat4.rotate(pMatrix, degToRad(camPos), [degToRad(45), degToRad(camPitch), degToRad(camYaw)]);
         mvPopMatrix();
     }
 
@@ -359,6 +378,7 @@
     var cubeMatrix = mat4.create();
     var mvMatrixStack = [];
     var pMatrix = mat4.create();
+    var mvpMatrix = mat4.create();
     var camera = mat4.create();
 
     function mvPushMatrix() {
