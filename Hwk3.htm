@@ -1,5 +1,4 @@
-﻿
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <!-- Chris Russell-Walker
     BU MET CS532 Comp Graphics
     Hwk3
@@ -38,20 +37,17 @@
 <script src="http://code.jquery.com/jquery-1.6.4.min.js" type="text/javascript"> </script>
 <script src="toji-gl-matrix-218c908/gl-matrix.js" type="text/javascript"> </script>
 <script id="vshader-lesson4" type="x-shader/x-vertex">
-    uniform mat4 uMVMatrix;
-    uniform mat4 uPMatrix;
-
     attribute vec3 aVertexPosition;
     attribute vec4 aVertexColor;
-    attribute vec2 aTexture;
+
+    uniform mat4 uMVMatrix;
+    uniform mat4 uPMatrix;
     
     varying vec4 vColor;
-    varying vec2 vTexture;
     
     void main(void) {
         gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
         vColor = aVertexColor;
-        vTexture = aTexture;
     }
 </script>
 <script id="fshader-lesson4" type="x-shader/x-fragment">
@@ -59,15 +55,10 @@
     precision highp float;
     #endif
 
-    uniform sampler2D uTexture;
-
     varying vec4 vColor;
-    varying vec2 vTexture;
     
     void main(void) {
-        vec4 teaColor = texture2D(uTexture, vTexture);
-
-        gl_FragColor = mix(vColor, teaColor, teaColor.a);
+        gl_FragColor = vColor;
     }
 </script>
 <script>
@@ -115,7 +106,6 @@
 
         shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
         shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
-
         shaderProgram.cubeMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
     }
 
@@ -124,7 +114,7 @@
         if (!shaderScript) {
             return null;
         }
-        
+
         var str = "";
         var k = shaderScript.firstChild;
         while (k) {
@@ -159,7 +149,7 @@
         gl.enable(gl.DEPTH_TEST);
         // Set up mouse/keyboard events
         $(window).keydown(keyHandler);
-        
+
         // Set up a uniform variable for the shaders
         // Not used yet
         // gl.uniform3f(gl.getUniformLocation(gl.program, "lightDir"), 0, 0, 1);
@@ -167,41 +157,41 @@
         cubeVertexPositionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
         vertices = [
-            // Front face
-            -1.0, -1.0,  1.0,
-             1.0, -1.0,  1.0,
-             1.0,  1.0,  1.0,
-            -1.0,  1.0,  1.0,
+        // Front face
+            -1.0, -1.0, 1.0,
+             1.0, -1.0, 1.0,
+             1.0, 1.0, 1.0,
+            -1.0, 1.0, 1.0,
 
-            // Back face
+        // Back face
             -1.0, -1.0, -1.0,
-            -1.0,  1.0, -1.0,
-             1.0,  1.0, -1.0,
+            -1.0, 1.0, -1.0,
+             1.0, 1.0, -1.0,
              1.0, -1.0, -1.0,
 
-            // Top face
-            -1.0,  1.0, -1.0,
-            -1.0,  1.0,  1.0,
-             1.0,  1.0,  1.0,
-             1.0,  1.0, -1.0,
+        // Top face
+            -1.0, 1.0, -1.0,
+            -1.0, 1.0, 1.0,
+             1.0, 1.0, 1.0,
+             1.0, 1.0, -1.0,
 
-            // Bottom face
+        // Bottom face
             -1.0, -1.0, -1.0,
              1.0, -1.0, -1.0,
-             1.0, -1.0,  1.0,
-            -1.0, -1.0,  1.0,
+             1.0, -1.0, 1.0,
+            -1.0, -1.0, 1.0,
 
-            // Right face
+        // Right face
              1.0, -1.0, -1.0,
-             1.0,  1.0, -1.0,
-             1.0,  1.0,  1.0,
-             1.0, -1.0,  1.0,
+             1.0, 1.0, -1.0,
+             1.0, 1.0, 1.0,
+             1.0, -1.0, 1.0,
 
-            // Left face
+        // Left face
             -1.0, -1.0, -1.0,
-            -1.0, -1.0,  1.0,
-            -1.0,  1.0,  1.0,
-            -1.0,  1.0, -1.0
+            -1.0, -1.0, 1.0,
+            -1.0, 1.0, 1.0,
+            -1.0, 1.0, -1.0
         ];
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
         cubeVertexPositionBuffer.itemSize = 3;
@@ -225,12 +215,12 @@
         cubeVertexIndexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
         var cubeVertexIndices = [
-            0, 1, 2,      0, 2, 3,    // Front face
-            4, 5, 6,      4, 6, 7,    // Back face
-            8, 9, 10,     8, 10, 11,  // Top face
-            12, 13, 14,   12, 14, 15, // Bottom face
-            16, 17, 18,   16, 18, 19, // Right face
-            20, 21, 22,   20, 22, 23  // Left face
+            0, 1, 2, 0, 2, 3,    // Front face
+            4, 5, 6, 4, 6, 7,    // Back face
+            8, 9, 10, 8, 10, 11,  // Top face
+            12, 13, 14, 12, 14, 15, // Bottom face
+            16, 17, 18, 16, 18, 19, // Right face
+            20, 21, 22, 20, 22, 23  // Left face
         ];
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(cubeVertexIndices), gl.STATIC_DRAW);
         cubeVertexIndexBuffer.itemSize = 1;
@@ -243,17 +233,8 @@
         teapotVertexNormalBuffer.itemSize = 3;
         teapotVertexNormalBuffer.numItems = teapotData.vertexNormals.length / 3;
 
-        var flowerTexture = gl.createTexture();
-        flowerTexture.image = new Image();
-        flowerTexture.image.src = "textures/Chrysanthemum.jpg";
-        console.log(flowerTexture);
-
-        gl.activeTexture(gl.TEXTURE0);
-        gl.bindTexture(gl.TEXTURE_2D, flowerTexture);
-        gl.uniform1i(shaderProgram.samplerUniform, 0);
         teapotVertexTextureCoordBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, teapotVertexTextureCoordBuffer);
-        gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, teapotVertexTextureCoordBuffer.itmeSize, gl.FLOAT, false, 0, 0); 
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(teapotData.vertexTextureCoords), gl.STATIC_DRAW);
         teapotVertexTextureCoordBuffer.itemSize = 2;
         teapotVertexTextureCoordBuffer.numItems = teapotData.vertexTextureCoords.length / 2;
@@ -335,6 +316,10 @@
             camYaw -= 0.1;
         if (e.keyCode == 39) // Right arrow for yaw
             camYaw += 0.1;
+        if (e.keyCode == 68 && !e.shiftKey) // Camera Distance
+            camDist += 1;
+        if (e.keyCode == 68 && e.shiftKey)
+            camDist -= 1;
         // Orbits
         if (e.keyCode == 81) // "Q"
             quirkyOrbit = !quirkyOrbit;
@@ -355,17 +340,6 @@
         canvas.height = height;
 
         gl.viewport(0, 0, width, height);
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        mat4.identity(pMatrix);
-        mat4.translate(pMatrix, [0, 0, 0]);
-        mvPushMatrix();
-        // mat4.perspective(fovy, aspect, near, far, dest)
-        mat4.perspective(camDist, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-        // mat4.multiply(mvMatrix, pMatrix);
-        // mat4.lookat(eye, center, up, dest)
-        //mat4.lookAt([0, 0, -1.5], [0, 0, -0.5], [0, 1, 0], mvpMatrix);
-        //mat4.rotate(pMatrix, degToRad(camPos), [degToRad(45), degToRad(camPitch), degToRad(camYaw)]);
-        mvPopMatrix();
     }
 
     function setMatrixUniforms() {
@@ -378,8 +352,6 @@
     var cubeMatrix = mat4.create();
     var mvMatrixStack = [];
     var pMatrix = mat4.create();
-    var mvpMatrix = mat4.create();
-    var camera = mat4.create();
 
     function mvPushMatrix() {
         var copy = mat4.create();
@@ -397,6 +369,21 @@
     function drawPicture(gl) {
         reshape(gl);
 
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        mat4.identity(pMatrix);
+        mat4.translate(pMatrix, [0, 0, 0]);
+        mvPushMatrix();
+        mat4.rotate(pMatrix, degToRad(camPos), [degToRad(45), degToRad(camPitch), degToRad(camYaw)]);
+
+        // mat4.lookat(eye, center, up, dest)
+        //        mat4.lookAt([0, 0, -1.5], [0, 0, -0.5], [0, 1, 0], mvMatrix);
+
+        // mat4.perspective(fovy, aspect, near, far, dest)
+        mat4.perspective(camDist, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+        // mat4.multiply(mvMatrix, pMatrix);
+
+        mvPopMatrix();
+
         mat4.identity(mvMatrix);
         //mat4.rotate(mvMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
         // Translates both cube and teapot
@@ -406,6 +393,7 @@
         mvPushMatrix();
         mat4.identity(cubeMatrix);
         // If need to translate Cube do it here
+        mat4.rotate(mvMatrix, degToRad(90), [1, 0, 0]);
         mat4.rotate(mvMatrix, degToRad(cubePos), [0, 1, 0]);
         /**** DRAW CUBE ****/
         gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
@@ -416,12 +404,16 @@
         setMatrixUniforms();
 
         gl.drawElements(gl.TRIANGLES, cubeVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
-        mvPopMatrix();
+        //mvPopMatrix();
         /**** END CUBE ****/
 
         // PUSH - teapot
-        mvPushMatrix();
-        mat4.translate(mvMatrix, [0, 18, -65]);
+        mat4.translate(mvMatrix, [0, 0, -3]);
+        mat4.rotate(mvMatrix, degToRad(-90), [1, 0, 0]);
+        mat4.scale(mvMatrix, [0.25, 0.25, 0.25]);
+        // mat4.translate(mvMatrix, [0, 18, -65]);
+        //mvPushMatrix();
+
         /**** DRAW TEAPOT ****/
         // TO DO -shininess and texture
         gl.uniform1i(shaderProgram.samplerUniform, 0);
@@ -437,7 +429,7 @@
         gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
         /**** END TEAPOT ****/
         mvPopMatrix();
-        
+
         if (reverse)
             cubePos -= incAngle;
         else
@@ -480,9 +472,9 @@
 <li style="display: inline;">"F" for forward rotation |</li>
 <li style="display: inline;">Left arrow for left yaw |</li>
 <li style="display: inline;">Right arrow for right yaw |</li>
+<li style="display: inline;">"D" for farther Distance for camera - hold shift for closer |</li>
 <li style="display: inline;">"R" for roll - hold shift for negative |</li>
 <li style="display: inline;">"P" for pitch - hold shift for negative</li>
 </ul>
 </div>
 </body>
-</html>
