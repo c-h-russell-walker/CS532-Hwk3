@@ -106,7 +106,6 @@
 
         shaderProgram.pMatrixUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
         shaderProgram.mvMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
-        shaderProgram.cubeMatrixUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
     }
 
     function getShader(gl, id) {
@@ -274,7 +273,7 @@
     var requestId;
 
     var cubePos = 0;
-    var camDist = 45;
+    var camDist = -20;
     var camPos = 0;
     var camRoll = 1;
     var camPitch = 0;
@@ -357,12 +356,10 @@
 
     function setMatrixUniforms() {
         gl.uniformMatrix4fv(shaderProgram.pMatrixUniform, false, pMatrix);
-        gl.uniformMatrix4fv(shaderProgram.cubeMatrixUniform, false, cubeMatrix);
         gl.uniformMatrix4fv(shaderProgram.mvMatrixUniform, false, mvMatrix);
     }
 
     var mvMatrix = mat4.create();
-    var cubeMatrix = mat4.create();
     var mvMatrixStack = [];
     var pMatrix = mat4.create();
 
@@ -386,15 +383,13 @@
         
 
         mat4.identity(mvMatrix);
-        //mat4.rotate(mvMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
         // Translates both cube and teapot
         mat4.translate(mvMatrix, [0, 0.0, -8.0]);
 
         // PUSH - cube
         mvPushMatrix();
-        //mat4.identity(cubeMatrix);
         // If need to translate Cube do it here
-        mat4.rotate(mvMatrix, degToRad(90), [1, 0, 0]);
+        mat4.rotate(mvMatrix, degToRad(90), [1, 0, 0]); // Get green face forward
         mat4.rotate(mvMatrix, degToRad(cubePos), [0, 1, 0]);
         /**** DRAW CUBE ****/
         gl.bindBuffer(gl.ARRAY_BUFFER, cubeVertexPositionBuffer);
@@ -432,18 +427,21 @@
         mvPopMatrix();
 
         mat4.identity(pMatrix);
-        mat4.translate(pMatrix, [0, 0, 0]);
         mvPushMatrix();
-
+        
         // mat4.lookat(eye, center, up, dest)
-        pMatrix = mat4.lookAt([camLeftRight, camHeight, camDist], [0, 0, 0], [camRoll, camPitch, camYaw], pMatrix);
+        mat4.lookAt([camLeftRight, camHeight, camDist], [0, 0, 0], [camRoll, camPitch, camYaw], pMatrix);
         //mat4.lookAt(this.getPosition(), vec3.add(center, panVector, vector2), up, mvMatrix);
         
         // mat4.perspective(fovy, aspect, near, far, dest)
         mat4.perspective(camDist, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-
+        
         mvPopMatrix();
-
+        mat4.rotateX(pMatrix, degToRad(camRoll));
+        mat4.rotateY(pMatrix, degToRad(camPitch));
+        mat4.rotateZ(pMatrix, degToRad(camYaw));
+        mat4.translate(pMatrix, [camLeftRight, camHeight, camDist]);
+        
         if (reverse)
             cubePos -= incAngle;
         else
