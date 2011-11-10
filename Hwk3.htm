@@ -279,6 +279,8 @@
     var camRoll = 1;
     var camPitch = 0;
     var camYaw = 0;
+    var camHeight = 0;
+    var camLeftRight = 0;
     var incAngle = 0;
 
     var reverse = false;
@@ -293,11 +295,12 @@
             else
                 incAngle = 0.5;
         }
+        /*** Object Movement ***/
         if (e.keyCode == 189) // Minus sign for speed up
             incAngle -= 0.1;
         if (e.keyCode == 187) // Plus sign for speed up
             incAngle += 0.1;
-        if (e.keyCode == 82) // "R" for reverse rotation
+        if (e.keyCode == 66) // "B" backwards rotation
             reverse = true;
         if (e.keyCode == 70) // "F" forward rotation
             reverse = false;
@@ -316,14 +319,24 @@
             camYaw -= 0.1;
         if (e.keyCode == 39) // Right arrow for yaw
             camYaw += 0.1;
-        if (e.keyCode == 68 && !e.shiftKey) // Camera Distance
+        // "Z" for camera distance
+        if (e.keyCode == 90 && !e.shiftKey)
             camDist += 1;
-        if (e.keyCode == 68 && e.shiftKey)
-            camDist -= 1;
-        // Orbits
+        if (e.keyCode == 90 && e.shiftKey)
+            camDist -= 1; // 
+        /*** Camera location ***/
+        if (e.keyCode == 87) // "W" up
+            camHeight += 0.5;
+        if (e.keyCode == 65) // "A" left
+            camLeftRight -= 0.5;
+        if (e.keyCode == 83) // "S" down
+            camHeight -= 0.5;
+        if (e.keyCode == 68) // "D" right
+            camLeftRight += 0.5;
+        /*** Orbits ***/
         if (e.keyCode == 81) // "Q"
             quirkyOrbit = !quirkyOrbit;
-        if (e.keyCode == 87) // "W"
+        if (e.keyCode == 75) // "K"
             wackyOrbit = !wackyOrbit;
     }
 
@@ -370,19 +383,7 @@
         reshape(gl);
 
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-        mat4.identity(pMatrix);
-        mat4.translate(pMatrix, [0, 0, 0]);
-        mvPushMatrix();
-        mat4.rotate(pMatrix, degToRad(camPos), [degToRad(45), degToRad(camPitch), degToRad(camYaw)]);
-
-        // mat4.lookat(eye, center, up, dest)
-        //        mat4.lookAt([0, 0, -1.5], [0, 0, -0.5], [0, 1, 0], mvMatrix);
-
-        // mat4.perspective(fovy, aspect, near, far, dest)
-        mat4.perspective(camDist, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
-        // mat4.multiply(mvMatrix, pMatrix);
-
-        mvPopMatrix();
+        
 
         mat4.identity(mvMatrix);
         //mat4.rotate(mvMatrix, degToRad(camPos), [degToRad(camRoll), degToRad(camPitch), degToRad(camYaw)]);
@@ -391,7 +392,7 @@
 
         // PUSH - cube
         mvPushMatrix();
-        mat4.identity(cubeMatrix);
+        //mat4.identity(cubeMatrix);
         // If need to translate Cube do it here
         mat4.rotate(mvMatrix, degToRad(90), [1, 0, 0]);
         mat4.rotate(mvMatrix, degToRad(cubePos), [0, 1, 0]);
@@ -428,6 +429,19 @@
         setMatrixUniforms();
         gl.drawElements(gl.TRIANGLES, teapotVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
         /**** END TEAPOT ****/
+        mvPopMatrix();
+
+        mat4.identity(pMatrix);
+        mat4.translate(pMatrix, [0, 0, 0]);
+        mvPushMatrix();
+
+        // mat4.lookat(eye, center, up, dest)
+        pMatrix = mat4.lookAt([camLeftRight, camHeight, camDist], [0, 0, 0], [camRoll, camPitch, camYaw], pMatrix);
+        //mat4.lookAt(this.getPosition(), vec3.add(center, panVector, vector2), up, mvMatrix);
+        
+        // mat4.perspective(fovy, aspect, near, far, dest)
+        mat4.perspective(camDist, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+
         mvPopMatrix();
 
         if (reverse)
@@ -472,9 +486,10 @@
 <li style="display: inline;">"F" for forward rotation |</li>
 <li style="display: inline;">Left arrow for left yaw |</li>
 <li style="display: inline;">Right arrow for right yaw |</li>
-<li style="display: inline;">"D" for farther Distance for camera - hold shift for closer |</li>
+<li style="display: inline;">"Z" for camera zoom - hold shift for closer |</li>
 <li style="display: inline;">"R" for roll - hold shift for negative |</li>
-<li style="display: inline;">"P" for pitch - hold shift for negative</li>
+<li style="display: inline;">"P" for pitch - hold shift for negative |</li>
+<li style="display: inline;">"WASD" - for camera movement</li>
 </ul>
 </div>
 </body>
